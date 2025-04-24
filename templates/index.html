@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Sentiment Analysis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        textarea {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 150px;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: inline-block;
+            margin-left: 15px;
+            color: #7f8c8d;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        .rating-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .stars {
+            position: relative;
+            display: inline-block;
+            font-size: 30px;
+            letter-spacing: 3px;
+        }
+        .stars-background {
+            color: #ecf0f1;
+        }
+        .stars-foreground {
+            position: absolute;
+            top: 0;
+            left: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            color: #f1c40f;
+        }
+        .rating-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 15px 0;
+            color: #2c3e50;
+        }
+        .sentiment-bar {
+            height: 20px;
+            background: linear-gradient(to right, #e74c3c, #f39c12, #2ecc71);
+            margin: 20px 0;
+            border-radius: 10px;
+            position: relative;
+        }
+        .sentiment-indicator {
+            position: absolute;
+            top: -5px;
+            width: 10px;
+            height: 30px;
+            background-color: #34495e;
+            transform: translateX(-50%);
+            border-radius: 5px;
+        }
+        .model-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Advanced Sentiment Analysis</h1>
+        <p>Enter your review below, and our ensemble of AI models will analyze the sentiment.</p>
+        
+        <textarea id="comment" placeholder="Type your review here..."></textarea>
+        <button id="submit-btn" onclick="analyzeSentiment()">Analyze Sentiment</button>
+        <span id="loading" class="loading" style="display:none;">
+            <span class="spinner"></span>Processing with multiple AI models...
+        </span>
+        
+        <div id="results" class="results">
+            <div class="rating-container">
+                <div class="stars">
+                    <div class="stars-background">★★★★★</div>
+                    <div id="stars-foreground" class="stars-foreground" style="width: 0%">★★★★★</div>
+                </div>
+                <div id="rating-value" class="rating-value">0.0</div>
+            </div>
+            
+            <div class="sentiment-bar">
+                <div id="sentiment-indicator" class="sentiment-indicator" style="left: 50%;"></div>
+            </div>
+            
+            <div id="model-info" class="model-info">
+                Analysis performed by our ensemble of AI models
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeSentiment() {
+            const comment = document.getElementById('comment').value;
+            const submitBtn = document.getElementById('submit-btn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+
+            // Validate input
+            if (!comment.trim()) {
+                alert("Please enter a review before analyzing.");
+                return;
+            }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            loading.style.display = 'inline';
+            results.style.display = 'none';
+
+            try {
+                // Send to backend
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ comment: comment }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const data = await response.json();
+                
+                // Update display
+                const rating = data.rating;
+                document.getElementById('rating-value').textContent = rating.toFixed(1);
+                
+                // Update stars (0-100% width)
+                const starsWidth = (rating / 5) * 100;
+                document.getElementById('stars-foreground').style.width = starsWidth + '%';
+                
+                // Update sentiment indicator (0-100%)
+                const sentimentPos = ((rating - 1) / 4) * 100;
+                document.getElementById('sentiment-indicator').style.left = sentimentPos + '%';
+                
+                // Update model info
+                if (data.models_used) {
+                    document.getElementById('model-info').textContent = 
+                        `Analysis performed by ensemble of ${data.models_used} AI models`;
+                }
+                
+                // Show results
+                results.style.display = 'block';
+                
+            } catch (error) {
+                console.error("Analysis error:", error);
+                alert("An error occurred during analysis. Please try again.");
+            } finally {
+                // Reset loading state
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
